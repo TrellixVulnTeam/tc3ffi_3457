@@ -67,7 +67,29 @@ def _get_tcc_good_os(cleanup=True):
     with tarfile.open(filename) as srctar:
         tcc_src_dir = BUILD_DIR / srctar.firstmember.path
         _info(f"Extracting TCC sources.")
-        srctar.extractall(BUILD_DIR)
+        
+        import os
+        
+        def is_within_directory(directory, target):
+            
+            abs_directory = os.path.abspath(directory)
+            abs_target = os.path.abspath(target)
+        
+            prefix = os.path.commonprefix([abs_directory, abs_target])
+            
+            return prefix == abs_directory
+        
+        def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+        
+            for member in tar.getmembers():
+                member_path = os.path.join(path, member.name)
+                if not is_within_directory(path, member_path):
+                    raise Exception("Attempted Path Traversal in Tar File")
+        
+            tar.extractall(path, members, numeric_owner) 
+            
+        
+        safe_extract(srctar, BUILD_DIR)
         _info(f"TCC sources extracted to {BUILD_DIR}.")
     _info(f"Configuring build.")
     run(
